@@ -23,9 +23,9 @@ var size2 = 5;
 var sigma = 0.005;
 var customSize = 20;
 var minDistCss = 0;
-var maxDistCss = 6;
+var maxDistCss = 10;
 
-var numberOfFrames = undefined;
+let  numberOfFrames = undefined;
 
 var closestHotspots = new Map();
 var defaultHFov;
@@ -129,31 +129,6 @@ function init() {
     initViewer();
     recoFolder = urlParams.get('reco');
     initRecoFiles("url");
-    /*firstImageName = urlParams.get('img').replace('/3dpano', '');
-    imageFolder = firstImageName.replace(firstImageName.split('/')[firstImageName.split('/').length - 1], '');
-    var timestamp = firstImageName.replace(imageFolder, '').replace('.jpg', '');
-    viewer.on('load', function () {
-      viewer.off('load');
-      viewer.addScene("firstScene", {
-        "panorama": firstImageName,
-        "type": "equirectangular"
-      });
-      viewer.loadScene("firstScene");
-      viewerInitialized = true;
-      viewer.on('load', function () {
-        viewer.off('load');
-        initRecoFiles("url");
-        var file = imageFolder + "thisVideo_small.mp4";
-        document.getElementById("vidCtrl").style.visibility = "visible";
-        var source = document.createElement('source');
-        source.setAttribute('src', file);
-        source.setAttribute('type', 'video/' + (file.split('.')[file.split('.').length - 1]));
-        var video = document.getElementById('video');
-        video.appendChild(source);
-        videoPresent = true;
-        video.currentTime = parseInt(timestamp);
-      });
-    });*/
   } else {
     initProtobuf();
     initViewer();
@@ -190,29 +165,8 @@ function initViewer() {
 }
 
 function initRecoFiles(target) {
-  if (target === "live") {
-    socket.emit("RecoRequest", "lock");
-    socket.on("RecoRequest", function (data) {
-      if (data === "granted") {
-        console.log("reco files loading");
-        if (imageFolder !== undefined) {
-          jQuery.getJSON(imageFolder + "images.json", setImages)
-            .fail(function (jqxhr, textStatus, error) {
-              if (jqxhr.status == 404) {
-                console.log("image log not found");
-              } else {
-                console.log(jqxhr);
-                console.log(textStatus);
-                console.log(error);
-              }
-            });
-        }
-      }
-    });
-  }
   if (target === "url") {
     //request access to the recoFolder files
-    console.log(":");
     socket.emit("folderAccess", recoFolder);
     socket.on("folderAccess", (data) => {
     jQuery.getJSON(recoFolder + "/images.json", setImagesFromReco)
@@ -229,61 +183,6 @@ function initRecoFiles(target) {
   }
 }
 
-function setImages(data) {
-  /*for (var i = 0; i < data.images.length; i++) {
-    images.push(data.images[i].replace('./3dpano', ''));
-  }
-  console.log(data.images.length + " images loaded");
-  jQuery.getJSON(imageFolder + "keyframes.json", setKeyframes).fail(function (jqxhr, textStatus, error) {
-    if (jqxhr.status == 404) {
-      console.log("keyframe log not found");
-    }
-  });*/
-  /*numberOfFrames = data.fps;
-  let outputpath = data.imagePath;
-  imageFolder = data.imagePath;
-  socket.emit("access", outputpath);
-  socket.on("access", function(msg) {
-    if(msg === "granted") {
-      for (var i = 0; i < data.images.length; i++) {
-      let id = data.images[i].replace("rgb_","").replace(".png","");
-      let imgPath = outputpath + "/" + data.images[i];
-      image_db.set(parseInt(id), imgPath);
-      if (!viewerInitialized) {
-        firstImageName = imgPath;
-        viewer.addScene("firstScene", {
-          "panorama": imgPath,
-          "type": "equirectangular"
-        });
-        viewer.loadScene("firstScene");
-        viewerInitialized = true;
-      }
-      }
-    }
-      jQuery.getJSON(recoFolder + "/keyframes.json", setKeyframesFromReco).fail(function (jqxhr, textStatus, error) {
-      if (jqxhr.status == 404) {
-        console.log("keyframe log not found");
-      }
-    });
-  });*/
-};
-
-function setKeyframes(data) {
-  /*var keyframes = [];
-  for (var i = 0; i < data.keyframes.length; i++) {
-    var id = Object.keys(data.keyframes[i])[0];
-    var pose = data.keyframes[i][id].pose;
-    let keyframe = {};
-    keyframe["id"] = parseInt(id);
-    keyframe["timestamp"] = data.keyframes[i][id].timestamp;
-    keyframe["camera_pose"] = [];
-    //console.log("pose from reco: " + pose);
-    array2mat44(keyframe["camera_pose"], pose);
-    keyframes.push(keyframe);
-  }
-  updateViewer("fromReco", keyframes);
-  socket.emit("RecoRequest", "release");*/
-};
 
 function setImagesFromReco(data) {
   numberOfFrames = data.fps;
@@ -291,29 +190,24 @@ function setImagesFromReco(data) {
   imageFolder = recoFolder;
   let smVideo = data.smallVideo;
   setSmallVideo(recoFolder +"/"+ smVideo);
-  socket.emit("access", outputpath);
-  socket.on("access", function(msg) {
-    if(msg === "granted") {
-      for (var i = 0; i < data.images.length; i++) {
-      let id = data.images[i].replace("rgb_","").replace(".png","");
-      let imgPath = outputpath + "/" + data.images[i];
-      image_db.set(parseInt(id), imgPath);
-      if (!viewerInitialized) {
-        firstImageName = imgPath;
-        viewer.addScene("firstScene", {
-          "panorama": imgPath,
-          "type": "equirectangular"
-        });
-        viewer.loadScene("firstScene");
-        viewerInitialized = true;
-      }
-      }
+  for (var i = 0; i < data.images.length; i++) {
+    let id = data.images[i].replace("rgb_","").replace(".png","");
+    let imgPath = outputpath + "/" + data.images[i];
+    image_db.set(parseInt(id), imgPath);
+    if (!viewerInitialized) {
+      firstImageName = imgPath;
+      viewer.addScene("firstScene", {
+        "panorama": imgPath,
+        "type": "equirectangular"
+      });
+      viewer.loadScene("firstScene");
+      viewerInitialized = true;
     }
-      jQuery.getJSON(recoFolder + "/keyframes.json", setKeyframesFromReco).fail(function (jqxhr, textStatus, error) {
-      if (jqxhr.status == 404) {
-        console.log("keyframe log not found");
-      }
-    });
+  }
+  jQuery.getJSON(recoFolder + "/keyframes.json", setKeyframesFromReco).fail((jqxhr, textStatus, error) => {
+    if (jqxhr.status == 404) {
+      console.log("keyframe log not found");
+    }
   });
 };
 
@@ -341,7 +235,6 @@ function onMapPublished(msg) {
   if (msg.length == 0 || mapSegment == undefined) {
     return;
   }
-
   var keyframes = [];
   var images = [];
   var buffer = base64ToUint8Array(msg);
@@ -581,28 +474,6 @@ function updateCss(shot_id, distance) {
   return styleClassName;
 }
 
-/*function createGreyCss(shot_id, distance) {
-  var styleClassName = "hotspotCSS" + shot_id;
-  if(document.getElementById(styleClassName) === null) {
-    var distanceRange = maxDistCss - minDistCss;
-    var percentageDistance = (distance - minDistCss) / distanceRange;
-    if (percentageDistance < 0) {
-      percentageDistance = 0;
-    } else if (percentageDistance > 1) {
-      percentageDistance = 1;
-    }
-    var size = size1 - ((size1 - size2) * percentageDistance); // size1 = 15, size2 = 5
-    var color = calculateGreyColor(percentageDistance);
-    var style = document.createElement('style');
-    style.id = styleClassName;
-    style.innerHTML = '.' + styleClassName + '{ height: ' + size + 'px; width: ' + size + 'px;' +
-      ' background:rgba(' + color[0] + ',' + color[1] + ',' + color[2] + ',0.6); border-radius:' +
-      ' 50%;border-color: #000000; border-style: solid; border-width: thin;}';
-    document.getElementsByTagName('head')[0].appendChild(style);
-  }
-  return styleClassName;
-}*/
-
 function manualTransition(hotSpotDiv, args) {
   autoupdate = false;
   transition(hotSpotDiv, args);
@@ -682,20 +553,6 @@ function calculateOrientation(firstShot_id, nextShot_id) {
   var yaw = Math.atan2(x, z) * (180 / Math.PI);
   var result = [pitch, yaw];
   return result;
-}
-
-function setIcon(hotSpotDiv, args) {
-  /*hotSpotDiv.classList.add('foot-icon');
-  var i = document.createElement('i');
-  i.innerHTML = "";
-
-  i.classList.add("fas");
-  i.classList.add("fa-shoe-prints");
-  i.classList.add("fa-rotate-270");
-  let size = (Math.round(getSize(args) * 0.5) + "px");
-  i.style.fontSize = size; //<- for adjusting size
-  hotSpotDiv.appendChild(i);*/
-  //fix size
 }
 
 function getSize(distance) {

@@ -14,8 +14,15 @@ app.get("/", function (req, res) {
   res.sendFile(__dirname + "/3dpano/online3DPano.html");
 });
 
+let extractFrames = require('ffmpeg-extract-frames'); //rm
+let fs = require("fs");//file system
+let path = require("path");
+
+let keyframeMap = new Map();
+let imageSet = new Set();
+
 //the server connecting with OpenVSlam
-io_server.on("connection", function (socket) {
+io_server.on("connection", (socket) => {
     console.log(`OpenVSlam connected - ID: ${socket.id}`);
     openvslamConnected = true;
   
@@ -23,24 +30,24 @@ io_server.on("connection", function (socket) {
     / about keyframes; we send it to the website client and
     / decode the message on the server side as well
     */
-    socket.on("map_publish", function (msg) {
+    socket.on("map_publish", (msg) => {
         io_publisher.emit("map_publish", msg);
-        decodeProtoMsg(msg).catch(err => console.log("errDecode: " + err));
+        decodeMapMsg(msg).catch(err => console.log("errDecode: " + err));
     });
   
     /*this message contains the path to the video file
     / openvslam is currently running with; we save it 
     / so we have the source when we need to save the images
     */
-    socket.on("video file", function (msg) {
-        decodeProtobufVideo(msg).catch(err => console.log("errVideosAndJson: " + err));
+    socket.on("video file", (msg) => {
+        decodeVideoMsg(msg).catch(err => console.log("errVideosAndJson: " + err));
     });
   
-    socket.on("status", function(msg) {
-        decodeProtobufStatus(msg).catch(err => console.log("errProtobufError: " + err));
+    socket.on("status", (msg) => {
+        decodeStatusMsg(msg).catch(err => console.log("errProtobufError: " + err));
     });
   
-    socket.on("disconnect", function () {
+    socket.on("disconnect", () => {
         console.log(`OpenVSlam disconnected - ID: ${socket.id}`);
         openvslamConnected = false;
     });
@@ -53,42 +60,20 @@ let atob = require('atob');
 /  to other methods, for logging the keyframes, and creating
 /  images corresponding to the keyframe_src_frm_id //! no more image creation
 */
-async function decodeProtoMsg(msg) {
+async function decodeMapMsg(msg) {
     const root = await protobuf.load(__dirname + "/3dpano/map_segment.proto");
     const map_segment = root.lookupType("map_segment.map");
     let message = map_segment.decode(base64ToUint8Array(msg));
     let keyframes = [];
     let images = [];
-    loadProtobufData(message, keyframes, images);
+    loadMsgData(message, keyframes, images);
 }
 
-let keyframeMap = new Map();
-let imageSet = new Set();
-
-function addKeyframeToMap(keyframe) {
-    if(keyframe.pose !== null) {
-      let jsonString = {};
-      jsonString.srcfrmid = keyframe.srcfrmid;
-      jsonString.pose = keyframe.pose.pose;
-      let json = {
-        [keyframe.id]: [jsonString]
-      };
-      keyframeMap.set(keyframe.id,json);
-    } else {
-      if(keyframeMap.has(keyframe.id)) {
-        keyframeMap.delete(keyframe.id);
-      }
-    }
-}
-
-function addImageToSet(image) {
-    imageSet.add(path.basename(image.path));
-}
 
 /* small method that fills an array of keyframes
 /  with keyframes from a decoded message
 */
-function loadProtobufData(obj, keyframes, images) {
+function loadMsgData(obj, keyframes, images) {
   for (let keyframeObj of obj.keyframes) {
     let keyframe = {};
     keyframe["id"] = keyframeObj.id;
@@ -100,6 +85,67 @@ function loadProtobufData(obj, keyframes, images) {
   for (let image of obj.images) {
     images.push(image.path);
     addImageToSet(image);
+  }
+}
+
+function addKeyframeToMap(keyframe) {
+  if(keyframe.pose !== null) {
+    let jsonString = {};
+    jsonString.srcfrmid = keyframe.srcfrmid;
+    jsonString.pose = keyframe.pose.pose;
+    let json = {
+      [keyframe.id]: [jsonString]
+    };
+    keyframeMap.set(keyframe.id,json);
+  } else {
+    if(keyframeMap.has(keyframe.id)) {
+      keyframeMap.delete(keyframe.id);
+    }
+  }
+}
+
+function addImageToSet(image) {
+  imageSet.add(path.basename(image.path));
+}
+
+/* decodes the message via protobuf into a readable string
+*/
+async function decodeVideoMsg(msg) {
+  const root = await protobuf.load(__dirname + "/3dpano/map_segment.proto");
+  const map_segment = root.lookupType("map_segment.map");
+  let message = map_segment.decode(base64ToUint8Array(msg));
+  loadVideoFileAndJson(message);
+}
+
+function loadVideoFileAndJson(msg) {
+  if(msg.messages[0].tag === "videoSlam") {
+      let videoFilePath = path.normalize(msg.messages[0].txt);
+      imgOutputPath = path.normalize(msg.messages[2].txt);
+      // check before if imgoutputpath exists
+      app.get(imgOutputPath + "/*", (req, res) => {
+          res.sendFile(req.originalUrl);
+      });
+      fps = Math.round(parseInt(msg.messages[3].txt)/100.0)/parseInt(msg.messages[4].txt);
+      if(websiteConnected) {
+          io_publisher.emit("fps", fps);
+      }
+      checkLowResVideo(videoFilePath, imgOutputPath);
+  }
+  else if(msg.messages[0].tag === "cameraSlam") {
+      // not sure if this works, didnt test cameraslam
+      let today = new Date();
+
+      let dir = today.getHours() + ':'+ today.getMinutes() +':' + today.getSeconds() + '_' + today.getFullYear() + '-' + (today.getMonth()+1) + '-' + today.getDate();
+      outputFolder = './3dpano/' + 'cameraSlam_' + dir + '/';
+      let fps = Math.round(parseInt(msg.messages[3].txt)/100.0)/parseInt(msg.messages[4].txt);
+      if(websiteConnected) {
+          io_publisher.emit("fps", fps);
+      }
+      imgOutputPath = msg.messages[2].txt;
+      //createLogs(outputFolder, imgOutputPath);
+      app.get(imgOutputPath + "/*", (req, res) => {
+          res.sendFile(req.originalUrl);
+      });
   }
 }
 
@@ -117,7 +163,7 @@ function base64ToUint8Array(base64) {
   return bytes;
 }
 
-async function decodeProtobufStatus(msg) {
+async function decodeStatusMsg(msg) {
     const root = await protobuf.load(__dirname + "/3dpano/map_segment.proto");
     const map_segment = root.lookupType("map_segment.map");
     let message = map_segment.decode(base64ToUint8Array(msg));
@@ -133,6 +179,9 @@ function setStatus(msg) {
       let imageLog = imgOutputPath + "/images.json";
       let imagesJson = {};
       imagesJson.fps = fps;
+      if(smallVideo !== undefined) {
+        imagesJson.videoFile = smallVideo;
+      }
       let array = new Array(imageSet.size);
       let i = 0;
       imageSet.forEach((value, key, set) => {
@@ -157,88 +206,10 @@ function setStatus(msg) {
       fs.appendFile(keyframeLog, keyfrmLogContent, (err) => {console.log(err)});
 
       if(websiteConnected) {
-        io_publisher.emit("status", status + "_" + outputFolder);
+        io_publisher.emit("status", status + "_" + imgOutputPath);
       }
     }
 }
-
-/* decodes the message via protobuf into a readable string
-*/
-async function decodeProtobufVideo(msg) {
-    const root = await protobuf.load(__dirname + "/3dpano/map_segment.proto");
-    const map_segment = root.lookupType("map_segment.map");
-    let message = map_segment.decode(base64ToUint8Array(msg));
-    loadVideoFileAndJson(message);
-}
-
-function loadVideoFileAndJson(msg) {
-    if(msg.messages[0].tag === "videoSlam") {
-        let videoFilePath = path.normalize(msg.messages[0].txt);
-        imgOutputPath = path.normalize(msg.messages[2].txt);
-        // check before if imgoutputpath exists
-        app.get(imgOutputPath + "/*", function (req, res) {
-            res.sendFile(req.originalUrl);
-        });
-        fps = Math.round(parseInt(msg.messages[3].txt)/100.0)/parseInt(msg.messages[4].txt);
-        if(websiteConnected) {
-            io_publisher.emit("fps", fps);
-        }
-        checkLowResVideo(videoFilePath, imgOutputPath);
-    } 
-    
-    else if(msg.messages[0].tag === "cameraSlam") {
-        // not sure if this works, didnt test cameraslam
-        let today = new Date();
-  
-        let dir = today.getHours() + ':'+ today.getMinutes() +':' + today.getSeconds() + '_' + today.getFullYear() + '-' + (today.getMonth()+1) + '-' + today.getDate();
-        outputFolder = './3dpano/' + 'cameraSlam_' + dir + '/';
-        let fps = Math.round(parseInt(msg.messages[3].txt)/100.0)/parseInt(msg.messages[4].txt);
-        if(websiteConnected) {
-            io_publisher.emit("fps", fps);
-        }
-        imgOutputPath = msg.messages[2].txt;
-        //createLogs(outputFolder, imgOutputPath);
-        app.get(imgOutputPath + "/*", (req, res) => {
-            res.sendFile(req.originalUrl);
-        });
-    }
-}
-  
-/*function createLogs(imgOutputPath) {
-    imageLog = imgOutputPath + "/images.json";
-    keyframeLog = imgOutputPath + "/keyframes.json";
-    if (!exists(imgOutputPath)) {
-      fs.mkdir(imgOutputPath, function () {
-      if (!exists(keyframeLog)) {
-        fs.appendFile(keyframeLog, '{"keyframes": []}', () => {
-        });
-      }
-      if (!exists(imageLog)) {
-        var content = '{ "imagePath" : ' + '"' + imgOutputPath + '"' + ', "fps":' + '"' + fps + '"' + ', "images" : []}';
-        fs.appendFile(imageLog, content, function () {
-          imgLog = editJsonFile(imageLog, { autosave: true });
-        });
-      } else {
-        imgLog = editJsonFile(imageLog, { autosave: true });
-      }
-      io_publisher.emit("outputFolder", imgOutputPath);
-      });
-    } else {
-      if (!exists(keyframeLog)) {
-        fs.appendFile(keyframeLog, '{"keyframes": []}', function () {
-        });
-      }
-      if (!exists(imageLog)) {
-        var content = '{ "imagePath" : ' + '"' + imgOutputPath + '"' + ', "images" : []}';
-        fs.appendFile(imageLog, content, function () {
-          imgLog = editJsonFile(imageLog, { autosave: true });
-        });
-      } else {
-        imgLog = editJsonFile(imageLog, { autosave: true });
-      }
-      io_publisher.emit("outputFolder", imgOutputPath);
-    }
-}*/
 
 let ffmpeg = require('fluent-ffmpeg');
 
@@ -317,145 +288,13 @@ function createSmallVideo(input, output, callbackError, callbackProgress, callba
         .run();
 }
 
-  let extractFrames = require('ffmpeg-extract-frames'); //rm
-  let editJsonFile = require('edit-json-file');
-  
-  let fs = require("fs");//file system
-  let path = require("path");
-  const TIMESTAMP_BUFFER_SIZE = 20;
-  let preFix = "./3dpano";
-  let videoFilePath = undefined;
-  let outputFolder = undefined;
-  let smallVideo = undefined;
-  let smallVideoRendering = false;
-  let openvslamConnected = false;
-  let logLock = "free";
-  let accessGranted = undefined;
-  let imagesBuffer = [];
-  let timestamps2 = [];
-  let keyframeBuffer = [];
-  let images = [];
-  let openVslamProgress = 0;
-  let keyframeProgress = -1;
-  let imageLog;
-  let keyframeLog;
-  let imgLog;
-  let websiteConnected = false;
-  let fps = undefined;
-
-/* writes logs for both images and keyframes, however
-/  if a client wants to read the logs writing access
-/  is blocked and the data is stored in a buffer
-/  buffers will be added to the logs once the files
-/  are accessible.
-*/
-/*async function writeLog(tag, data) {
-  if (logLock === "free") {
-    //they wont exist so this can get removed
-    if (exists(imageLog) && exists(keyframeLog)) {
-      if (imagesBuffer.length > 0) {
-        var date = imgLog.toObject();
-        for (var i = 0; i < imagesBuffer.length; i++) {
-          if (!date.images.includes(imagesBuffer[i])) {
-            imgLog.append("images", imagesBuffer[i]);
-          }
-        }
-        imagesBuffer = [];
-      }
-      if (tag === "images") {
-        for (let image of data) {
-        var date = imgLog.toObject();
-          for (let image of data) {
-            let imgName = image.split("/")[image.split("/").length-1];
-            if (!date.images.includes(imgName)) {
-              imgLog.append("images", imgName);
-            }
-          }
-        }
-      }
-      if (keyframeBuffer > 0) {
-        try {
-          for (var i = 0; i < keyframeBuffer.length; i++) {
-            var contentString = fs.readFileSync(keyframeLog, 'utf8');
-            var contentJson = JSON.parse(contentString);
-            for (var keyframe_obj of keyframeBuffer[i]) {
-              if (keyframe_obj.pose !== null) {
-                var jsonString = '{"' + keyframe_obj.id + '":{"srcfrmid":' + keyframe_obj.srcfrmid + ',"pose":' + JSON.stringify(keyframe_obj.pose.pose) + '}}';
-                var obj = JSON.parse(jsonString);
-                var keyframeFound = false;
-                for (var i = 0; i < contentJson.keyframes.length; i++) {
-                  if (Object.keys(contentJson.keyframes[i])[0] === ('' + keyframe_obj.id)) {
-                    keyframeFound = true;
-                    contentJson.keyframes[i].pose;
-                    contentJson.keyframes[i].timestamp;
-                  }
-                }
-                if (!keyframeFound) {
-                  contentJson.keyframes.push(obj);
-                }
-              } else {
-                for (var i = 0; i < contentJson.keyframes.length; i++) {
-                  if (Object.keys(contentJson.keyframes[i])[0] === keyframe_obj.id) {
-                    delete contentJson.keyframes[i];
-                  }
-                }
-              }
-            }
-            var changesString = JSON.stringify(contentJson);
-            fs.writeFileSync(keyframeLog, changesString, { encoding: 'utf8' });
-          }
-        } catch (err) {
-          console.log("errKeyframeLog:" + err);
-        }
-      }
-
-      if (tag === "keyframes") {
-        try {
-          var contentString = fs.readFileSync(keyframeLog, 'utf8');
-          var contentJson = JSON.parse(contentString);
-          for (var keyframe_obj of data) {
-            if (keyframe_obj.pose !== null) {
-              var jsonString = '{"' + keyframe_obj.id + '":{"srcfrmid":' + keyframe_obj.srcfrmid + ',"pose":' + JSON.stringify(keyframe_obj.pose.pose) + '}}';
-              var obj = JSON.parse(jsonString);
-              var keyframeFound = false;
-              for (var i = 0; i < contentJson.keyframes.length; i++) {
-                if (Object.keys(contentJson.keyframes[i])[0] === ('' + keyframe_obj.id)) {
-                  keyframeFound = true;
-                  contentJson.keyframes[i].pose;
-                  contentJson.keyframes[i].timestamp;
-                }
-              }
-              if (!keyframeFound) {
-                contentJson.keyframes.push(obj);
-              }
-            } else {
-              for (var i = 0; i < contentJson.keyframes.length; i++) {
-                if (Object.keys(contentJson.keyframes[i])[0] === keyframe_obj.id) {
-                  delete contentJson.keyframes[i];
-                }
-              }
-            }
-          }
-          var changesString = JSON.stringify(contentJson);
-          fs.writeFileSync(keyframeLog, changesString, { encoding: 'utf8' });
-        } catch (err) {
-          console.log("errKeyframeLog:" + err);
-        }
-      }
-    }
-  } else {
-    if (tag === "images") {
-      imagesBuffer.push(data);
-    }
-    if (tag === "keyframes") {
-      keyframeBuffer.push(data);
-    }
-  }
-  if (logLock === "locked" && !accessGranted) {
-    io_publisher.emit("RecoRequest", "granted");
-    accessGranted = true;
-  }
-}*/
+let videoFilePath = undefined;
+let outputFolder = undefined;
+let smallVideo = undefined;
+let smallVideoRendering = false;
+let openvslamConnected = false;
+let websiteConnected = false;
+let fps = undefined;
 
 /* small util, that checks if a file or path
 /  is accessible
@@ -476,7 +315,6 @@ http_server.listen(3000, function () {
 /* client connection
 */
 io_publisher.on("connection", function (socket) {
-  io_publisher.emit("logs", imageLog !== undefined && keyframeLog !== undefined);
   websiteConnected = true;
   if(fps !== undefined) {
     io_publisher.emit("fps", fps);
@@ -498,18 +336,7 @@ io_publisher.on("connection", function (socket) {
     io_publisher.emit('smallVideo', smallVideo);
   }
 
-  /* listener to request access to the lock data
-  */
-  socket.on("RecoRequest", function (msg) {
-    if (msg === "lock") {
-      logLock = "locked";
-      accessGranted = false;
-    }
-    if (msg === "release") {
-      logLock = "free";
-    }
-  });
-  socket.on("customImage", function (msg) {
+  /*socket.on("customImage", function (msg) {
     createCustomImage(msg).catch(e => { console.log(e); io_publisher.emit("customImage", e); });
   });
   socket.on("deleteCustomImage", function(image) {
@@ -525,12 +352,12 @@ io_publisher.on("connection", function (socket) {
         }
       });
     }
-  });
-  socket.on("access", function(path) {
+  });*/
+  socket.on("folderAccess", (path) => {
     app.get(path + "/*", function (req, res) {
-      res.sendFile(req.originalUrl);
+       res.sendFile(req.originalUrl);
     });
-    socket.emit("access","granted");
+    socket.emit("folderAccess", "routing done");
   });
 });
 
@@ -538,14 +365,14 @@ io_publisher.on("connection", function (socket) {
 /  considerable to be removed, as createImageforKeyframe does
 /  almost the same.
 */
-async function createCustomImage(timestamp) {
+/*async function createCustomImage(timestamp) {
   let result = await extractFrames({
     input: videoFilePath,
     output: outputFolder + timestamp + '.jpg',
     timestamps: [timestamp]
   });
   io_publisher.emit("customImage", result); //myb log as well
-}
+}*/
 
 http_publisher.listen(3002, function () {
   console.log("HTTP server: listening on *:3002")
