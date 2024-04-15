@@ -398,7 +398,7 @@ function updateHotspots(keyframes) {
              "pitch": stats[2],
              "yaw": stats[1],
              "type": "info",
-             "createTooltipFunc": setIcon,
+             //"createTooltipFunc": setIcon,
              "createTooltipArgs": stats[0],
              "cssClass": css,
              "clickHandlerFunc": manualTransition,
