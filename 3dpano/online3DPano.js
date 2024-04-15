@@ -82,8 +82,11 @@ socket.on('smallVideoProgress', (progress) => {
 });
 
 socket.on('smallVideo', (file) => {
-  document.getElementById("progressForSmallVideo").style.visibility = "hidden";
+  setSmallVideo(file);
+});
 
+function setSmallVideo(file) {
+  document.getElementById("progressForSmallVideo").style.visibility = "hidden";
   document.getElementById("vidCtrl").style.visibility = "visible";
   //document.getElementById("createdPano").style.visibility = "visible";
   //hide list
@@ -96,7 +99,7 @@ socket.on('smallVideo', (file) => {
   if(thisScene_Id !== undefined) {
     video.currentTime = parseInt(keyFrameManager.getSrcFrmId(thisScene_Id)*numberOfFrames);
   }
-});
+}
 
 socket.on('disconnect', () => {
   console.log("3DPanoserver disconnected");
@@ -208,6 +211,10 @@ function initRecoFiles(target) {
     });
   }
   if (target === "url") {
+    //request access to the recoFolder files
+    console.log(":");
+    socket.emit("folderAccess", recoFolder);
+    socket.on("folderAccess", (data) => {
     jQuery.getJSON(recoFolder + "/images.json", setImagesFromReco)
       .fail(function (jqxhr, textStatus, error) {
         if (jqxhr.status == 404) {
@@ -217,6 +224,7 @@ function initRecoFiles(target) {
           console.log(textStatus);
           console.log(error);
         }
+    });
     });
   }
 }
@@ -281,6 +289,8 @@ function setImagesFromReco(data) {
   numberOfFrames = data.fps;
   let outputpath = recoFolder;
   imageFolder = recoFolder;
+  let smVideo = data.smallVideo;
+  setSmallVideo(recoFolder +"/"+ smVideo);
   socket.emit("access", outputpath);
   socket.on("access", function(msg) {
     if(msg === "granted") {
