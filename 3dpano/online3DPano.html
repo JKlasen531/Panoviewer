@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>3D-Panorama-Viewer</title>
+    <link rel="stylesheet" href="pannellum.css"/>
+    <script type="text/javascript" src="pannellum.js"></script>
+    <link rel="stylesheet" href="pano.css"/>
+    <script src="KeyFrameManager.js"></script>
+    <script src="PointManager.js"></script>
+	<link rel="stylesheet" href="//use.fontawesome.com/releases/v5.14.0/css/all.css"/>
+	<style>
+		div.objectLabel span {
+			visibility: visible;
+			position: absolute;
+			border-radius:3px;
+			background-color:#fff;
+			color:#000;
+			text-align:center;
+			max-width: 200px;
+			padding: 5px 10px;
+			margin-left: -220px;
+			cursor:defauls;
+		}
+		div.objectLabel span:after {
+			content: '';
+			position: absolute;
+			width: 0;
+			height: 0;
+			border-width: 10px;
+			border-style: solid;
+			border-color: #fff transparent transparent transparent;
+			bottom: -20px;
+			left: -10px;
+			margin: 0 50%;
+		}
+		.hotspotIcon {
+		}
+	</style>
+</head>
+<body>
+<div>
+		<div id="panorama">
+			<div id="controls">
+				<div class="ctrl" id="pan-up">&#9650;</div>
+				<div class="ctrl" id="pan-down">&#9660;</div>
+				<div class="ctrl" id="pan-left">&#9664;</div>
+				<div class="ctrl" id="pan-right">&#9654;</div>
+				<div class="ctrl" id="zoom-in">&plus;</div>
+				<div class="ctrl" id="zoom-out">&minus;</div>
+				<div class="ctrl" id="fullscreen">&#x2922;</div>
+				<div class="ctrl" id="toggleHotspots">&#9673;</div>
+				<div class="ctrl" id="toggleObjects">&#9673</div>
+			</div>
+		</div>
+	</div>
+<div id="videoDiv">
+	<div id="progressForSmallVideo">
+		<label for="smallVideoProgress"> rendering small video </label>
+		<progress id="smallVideoProgress" max="100" value="0">0%</progress>
+	</div>
+	<div id="vidCtrl">
+		<video id="video" controls preload="auto">
+		</video>
+		<div id="videoControls" class="controls" data-state="hidden">
+			<!--<button id="stop" type="button" data-state="stop">Stop</button>-->
+			<div class="timeline" value="0" min="0">
+			</div>
+			<!--<button id="newPano" class="videoCtrl" type="button" data-state="newPano">Create Pano</button>-->
+			<!--<button class="btn"><i class="fas fa-video"></i><i class="fas fa-long-arrow-alt-right"></i></button>-->
+		</div>
+	</div>
+	<div id="createdPano">
+			<p>Created Panos from Video:</p>
+			<ul id="olFrames"></ul>
+	</div>
+</div>
+<div id="recoLink">
+</div>
+
+<script>
+ document.getElementById('vidCtrl').style.visibility = "hidden";
+ document.getElementById('createdPano').style.visibility = "hidden";
+</script>
+
+
+<script src="/js/jquery.js"></script>
+<script src="/js/three.js"></script>
+<script src="/js/protobuf.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+
+<!-- pannellumScript-->
+<script src="online3DPano.js"></script>
+</body>
+</html>

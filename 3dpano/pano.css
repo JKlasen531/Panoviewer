@@ -1,0 +1,108 @@
+	#panorama {
+        width: 1400px;
+        height: 900px;
+		float: left;
+    }
+    #controls {
+        position: absolute;
+        bottom: 0;
+        z-index: 2;
+        text-align: center;
+        width: 100%;
+        padding-bottom: 3px;
+    }
+	.videoCtrl {
+		border: none;
+		padding: 15px 20px;
+		text-align: center;
+		text-decoration: none;
+		font-size: 16px;
+		display: inline-block;
+		cursor: pointer;
+		margin-top: 5px;
+		background-color: lightgrey;
+		transition-duration: 0.4s;
+		color: black;
+	}
+	.videoCtrl:hover {
+		background-color: grey;
+		color: white;
+	}
+	.videoCtrl:active {
+		background-color: black;
+	}
+	.deletePanoButton {
+		margin-left: 10px;
+	}
+	a {
+		margin-right: 10px;
+	}
+	ul {
+		margin-left: 10px;
+	}
+	#videoDiv{
+		float: none;
+		overflow: hidden;
+	}
+	#vidCtrl {
+		position: relative;
+		margin-left: 10%;
+		margin-top: 10%;
+		width: 80%;
+		height: auto;
+	}
+	#createdPano {
+		position: relative;
+		margin-left: 10%;
+		width: 80%;
+		height: auto;
+	}
+	p {
+	}
+	ul {
+		padding-left: 0;
+		list-style-position: inside;
+	}
+	li {
+		display:block;
+	}
+	/*progress[value] {
+		appearance: none; 
+		border: none; 
+		color: #e52e71; 
+	}
+	progress[value]::-webkit-progress-value {
+		background-image: linear-gradient(
+			to right,
+			#ff8a00, #e52e71
+			);
+		transition: width 1s linear;
+	}*/
+	/*progress[value]::-moz-progress-bar {
+		background-image: -moz-linear-gradient(
+		right,
+		#ff8a00, #e52e71
+		);
+	}*/
+	#video {
+		width: 100%;
+		height: auto;
+	}
+    .ctrl {
+        padding: 8px 5px;
+        width: 30px;
+        text-align: center;
+        background: rgba(200, 200, 200, 0.8);
+        display: inline-block;
+        cursor: pointer;
+    }
+    .ctrl:hover {
+        background: rgba(200, 200, 200, 1);
+    }
+	.hide{
+		visibility: hidden !important;
+	}
+	.pnlm-load-box {
+		z-index:-999;
+		opacity: 0;
+	}

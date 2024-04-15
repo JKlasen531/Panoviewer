@@ -1,0 +1,18 @@
+{
+  "name": "onlinePanoViewer",
+  "version": "0.0.1",
+  "description": "onlinePanoViewer",
+  "dependencies": {
+    "atob": "^2.1.2",
+    "edit-json-file": "^1.6.2",
+    "express": "^4.16.2",
+    "ffmpeg": "0.0.4",
+    "ffmpeg-extract-frames": "^2.0.2",
+    "fluent-ffmpeg": "^2.1.2",
+    "protobufjs": "^6.11.2",
+    "socket.io": "^2.0.4"
+  },
+  "devDependencies": {
+    "ejs": "^2.5.7"
+  }
+}

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Berlin, 25.2.2021</title>
+    <link rel="stylesheet" href="pannellum.css"/>
+    <script type="text/javascript" src="pannellum.js"></script>
+    <script>
+	window.addEventListener('message', (event) => {console.log(event.data)});
+    </script>
+    <link rel="stylesheet" href="pano.css"/>
+</head>
+<body>
+<div>
+		<div id="panorama">
+			<div id="controls">
+				<div class="ctrl" id="pan-up">&#9650;</div>
+				<div class="ctrl" id="pan-down">&#9660;</div>
+				<div class="ctrl" id="pan-left">&#9664;</div>
+				<div class="ctrl" id="pan-right">&#9654;</div>
+				<div class="ctrl" id="zoom-in">&plus;</div>
+				<div class="ctrl" id="zoom-out">&minus;</div>
+				<div class="ctrl" id="fullscreen">&#x2922;</div>
+				<div class="ctrl" id="toggleHotspots">&#9673;</div>
+			</div>
+		</div>
+</div>
+<script type="text/javascript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="/js/three.js"></script>
+
+<!-- pannellumScript-->
+<script>
+var params = new URLSearchParams(window.location.search);
+var img = params.get('img');
+
+viewer = pannellum.viewer('panorama', {
+	"type": "equirectangular",
+	"panorama": img,
+	"autoLoad": true
+});
+
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+To run this script a local server with php is required.
+
+A version of php can be downloaded here: https://www.php.net/downloads
+
+-----
+For windows command line:
+
+setup php localserver with: php -S localhost:port -T the root folder of the server,
+e. g. php -s localhost:8000 -t E:\DRZ\DRZ-Berlin-2021-03
+
+-----
+place the ffmpeg folder containing the bin folder with the ffmpeg.exe in this folder
+
+-----
+To run a php server with docker, use the command:
+docker run -d -p 8000:80 --name 3d-pano -v <rootDirectory>:/var/www/html php:7.2-apache
+rootDirectory should contain the viewer folder and the folder with the data and the reconstruction.json
+using this disables the function of creating new Panoramas
