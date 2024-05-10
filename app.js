@@ -121,6 +121,9 @@ function loadVideoFileAndJson(msg) {
   if(msg.messages[0].tag === "videoSlam") {
       let videoFilePath = path.normalize(msg.messages[0].txt);
       imgOutputPath = path.normalize(msg.messages[2].txt);
+      if (imgOutputPath.charAt(imgOutputPath.length -1) == "/") {
+          imgOutputPath = imgOutputPath.substring(0, imgOutputPath.length -1);
+      }
       // check before if imgoutputpath exists
       app.get(imgOutputPath + "/*", (req, res) => {
           res.sendFile(req.originalUrl);
